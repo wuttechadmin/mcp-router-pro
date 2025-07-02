@@ -11,8 +11,10 @@ COPY package*.json ./
 RUN npm ci --only=production
 
 # Copy application files
-COPY server-pro.js ./
-COPY mcp-*.js ./
+COPY src/server.js ./
+COPY src/mcp-*.js ./
+COPY src/admin-dashboard.js ./
+COPY src/production-monitor.js ./
 COPY *.json ./
 
 # Create logs directory
@@ -31,4 +33,4 @@ RUN adduser -S nodejs -u 1001
 USER nodejs
 
 # Start the application
-CMD ["node", "server-pro.js"]
+CMD ["node", "server.js"]

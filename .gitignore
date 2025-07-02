@@ -1,6 +1,7 @@
 # Logs
 *.log
 logs/
+*.log.*
 
 # API Keys and sensitive configuration
 **/config/*-config.json
@@ -8,15 +9,16 @@ logs/
 **/*-secret*
 **/credentials/
 azure-credentials.json
-
-# Local environment files
 .env
 .env.local
 .env.*.local
 
-# Node modules (if using npm for MCP tools)
+# Dependencies
 node_modules/
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
 
 # Python
 __pycache__/
@@ -32,6 +34,7 @@ venv/
 .venv/
 env/
 ENV/
+.conda/
 
 # Ollama models (large files)
 *.gguf
@@ -42,12 +45,33 @@ models/
 *.sqlite
 *.sqlite3
 
+# Build artifacts
+dist/
+build/
+*.egg-info/
+.next/
+out/
+
+# Local data and cache
+cache/
+data/
+*.cache
+.parcel-cache/
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
 # Temporary files
 *.tmp
 *.temp
 *~
-
-# OS generated files
 .DS_Store
 .DS_Store?
 ._*
@@ -62,22 +86,20 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+*.sublime-*
 
-# Build artifacts
-dist/
-build/
-*.egg-info/
-
-# Local data and cache
-cache/
-data/
-*.cache
+# OS generated files
+desktop.ini
+$RECYCLE.BIN/
+*.lnk
 
 # Backup files
 *.bak
 *.backup
 
-# Windows specific
-desktop.ini
-$RECYCLE.BIN/
-*.lnk
+# Test artifacts
+test-results/
+test-reports/
+
+# Docker
+.dockerignore

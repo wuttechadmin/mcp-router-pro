@@ -2,11 +2,16 @@
   "name": "mcp-router-pro",
   "version": "1.0.0",
   "description": "Production-ready MCP Router with advanced features",
-  "main": "server-pro.js",
+  "main": "src/server.js",
   "scripts": {
-    "start": "node server-pro.js",
-    "test": "node test-suite-advanced.js",
-    "health": "curl -f http://localhost:3001/health || exit 1"
+    "start": "node src/server.js",
+    "dev": "node src/server.js",
+    "test": "node tests/test-suite-advanced.js",
+    "test:load": "node tests/load-test-runner.js",
+    "health": "curl -f http://localhost:3001/health || exit 1",
+    "docker:build": "docker build -t mcp-router-pro .",
+    "docker:run": "docker run -p 3001:3001 mcp-router-pro",
+    "deploy": "node scripts/deploy.js"
   },
   "keywords": [
     "mcp",
@@ -25,7 +30,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mcp-router/mcp-router-pro.git"
+    "url": "git+https://github.com/wuttechadmin/mcp-router-pro.git"
   },
   "bugs": {
     "url": "https://github.com/mcp-router/mcp-router-pro/issues"

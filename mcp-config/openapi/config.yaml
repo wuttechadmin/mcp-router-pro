@@ -1,0 +1,72 @@
+apis:
+  # GitHub API Configuration
+  - name: "github"
+    url: "https://api.github.com"
+    spec_url: "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json"
+    auth:
+      type: "bearer"
+      token_env: "GITHUB_TOKEN"
+    description: "GitHub REST API for repository and issue management"
+    
+  # Docker Registry API
+  - name: "docker-hub"
+    url: "https://hub.docker.com/v2"
+    spec_url: "https://docs.docker.com/registry/spec/api/"
+    auth:
+      type: "none"
+    description: "Docker Hub Registry API for image management"
+    
+  # Prometheus API
+  - name: "prometheus"
+    url: "${PROMETHEUS_URL:-http://localhost:9090}"
+    spec_url: "local://prometheus-api.yaml"
+    auth:
+      type: "none"
+    description: "Prometheus HTTP API for metrics querying"
+    
+  # Grafana API
+  - name: "grafana"
+    url: "${GRAFANA_URL:-http://localhost:3000}"
+    spec_url: "local://grafana-api.yaml"
+    auth:
+      type: "api_key"
+      key_env: "GRAFANA_API_KEY"
+      header: "Authorization"
+      prefix: "Bearer "
+    description: "Grafana API for dashboard and alerting management"
+
+  # Slack API
+  - name: "slack"
+    url: "https://slack.com/api"
+    spec_url: "https://raw.githubusercontent.com/slackapi/slack-api-specs/master/web-api/slack_web_openapi_v2.json"
+    auth:
+      type: "bearer"
+      token_env: "SLACK_BOT_TOKEN"
+    description: "Slack Web API for team communication"
+
+  # OpenAI API (for external AI integration)
+  - name: "openai"
+    url: "https://api.openai.com/v1"
+    spec_url: "local://openai-api.yaml"
+    auth:
+      type: "bearer"
+      token_env: "OPENAI_API_KEY"
+    description: "OpenAI API for external AI model access"
+
+# Global settings
+settings:
+  timeout: 30
+  retries: 3
+  rate_limit:
+    requests_per_minute: 60
+    burst_size: 10
+  cache:
+    ttl_seconds: 300
+    max_entries: 1000
+  security:
+    verify_ssl: true
+    max_response_size: "10MB"
+    allowed_content_types:
+      - "application/json"
+      - "application/xml"
+      - "text/plain"

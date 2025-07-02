@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+name: mcp-router
+metadata:
+  template: mcp-router@0.0.1-beta
+
+# Hooks
+hooks:
+  postprovision:
+    shell: sh
+    run: echo "Provisioning complete"
+
+# Services
+services:
+  api:
+    project: .
+    host: containerapp
+    language: js

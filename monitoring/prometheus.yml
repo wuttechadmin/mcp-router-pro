@@ -1,0 +1,39 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'mcp-services'
+    static_configs:
+      - targets: [
+          'mcp-router:3001',
+          'mcp-postgres:5432',
+          'mcp-filesystem:3003',
+          'mcp-git:3004',
+          'mcp-memory:3005',
+          'mcp-sqlite:3006',
+          'mcp-brave-search:3007',
+          'mcp-github:3008',
+          'mcp-slack:3009',
+          'mcp-email:3010',
+          'mcp-docker:3011',
+          'mcp-e2b:3012',
+          'mcp-openapi:3013',
+          'mcp-jupyter:8888'
+        ]
+    scrape_interval: 30s
+    metrics_path: '/metrics'
+    scrape_timeout: 10s
+
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['mcp-postgres:5432']
+    scrape_interval: 30s

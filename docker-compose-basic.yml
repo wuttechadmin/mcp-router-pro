@@ -1,0 +1,14 @@
+services:
+  mcp-router:
+    image: node:20-alpine
+    container_name: mcp-router
+    working_dir: /app
+    volumes:
+      - ./basic-server.js:/app/server.js:ro
+    command: ["node", "server.js"]
+    ports:
+      - "3001:3001"
+
+networks:
+  default:
+    name: mcp-network

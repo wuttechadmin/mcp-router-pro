@@ -1,0 +1,23 @@
+{
+  "servers": {},
+  "routing": {
+    "loadBalancing": "round-robin",
+    "timeout": 30000,
+    "retries": 3
+  },
+  "security": {
+    "authentication": {
+      "type": "token",
+      "tokenHeader": "X-MCP-Token"
+    },
+    "rateLimit": {
+      "requestsPerMinute": 100,
+      "burstSize": 20
+    }
+  },
+  "logging": {
+    "level": "info",
+    "format": "json",
+    "destination": "/var/log/mcp-router.log"
+  }
+}

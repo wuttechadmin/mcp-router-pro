@@ -1,0 +1,34 @@
+{
+  "name": "mcp-router-pro",
+  "version": "1.0.0",
+  "description": "Production-ready MCP Router with advanced features",
+  "main": "server-pro.js",
+  "scripts": {
+    "start": "node server-pro.js",
+    "test": "node test-suite-advanced.js",
+    "health": "curl -f http://localhost:3001/health || exit 1"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "router",
+    "proxy",
+    "production"
+  ],
+  "author": "MCP Router Pro Team",
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.14.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mcp-router/mcp-router-pro.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mcp-router/mcp-router-pro/issues"
+  },
+  "homepage": "https://github.com/mcp-router/mcp-router-pro#readme"
+}

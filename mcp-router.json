@@ -1,0 +1,12 @@
+{
+  "servers": {},
+  "clients": {},
+  "routing": {
+    "defaultTimeout": 30000,
+    "retryAttempts": 3
+  },
+  "logging": {
+    "level": "info",
+    "enableRequestLogging": true
+  }
+}

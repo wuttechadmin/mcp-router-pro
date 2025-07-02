@@ -1,0 +1,83 @@
+# Logs
+*.log
+logs/
+
+# API Keys and sensitive configuration
+**/config/*-config.json
+**/*-api-key*
+**/*-secret*
+**/credentials/
+azure-credentials.json
+
+# Local environment files
+.env
+.env.local
+.env.*.local
+
+# Node modules (if using npm for MCP tools)
+node_modules/
+npm-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Ollama models (large files)
+*.gguf
+models/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/settings.json
+.vscode/launch.json
+.idea/
+*.swp
+*.swo
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Local data and cache
+cache/
+data/
+*.cache
+
+# Backup files
+*.bak
+*.backup
+
+# Windows specific
+desktop.ini
+$RECYCLE.BIN/
+*.lnk

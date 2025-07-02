@@ -1,0 +1,15 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": {
+      "value": "staging"
+    },
+    "location": {
+      "value": "eastus"
+    },
+    "principalId": {
+      "value": "460e6efc-631b-4895-91f6-5406ac631926"
+    }
+  }
+}

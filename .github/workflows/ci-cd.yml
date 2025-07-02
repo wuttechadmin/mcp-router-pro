@@ -1,0 +1,376 @@
+# MCP Router Pro - CI/CD Pipeline
+# GitHub Actions workflow for automated testing and deployment
+
+name: MCP Router Pro CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run health checks daily at 6 AM UTC
+    - cron: '0 6 * * *'
+
+env:
+  NODE_VERSION: '20'
+  DOCKER_REGISTRY: 'ghcr.io'
+  IMAGE_NAME: 'mcp-router-pro'
+
+jobs:
+  # Code Quality and Security Scan
+  code-quality:
+    runs-on: ubuntu-latest
+    name: Code Quality & Security
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint code
+        run: |
+          npx eslint . --ext .js --format json --output-file eslint-results.json || true
+          echo "ESLint results:"
+          cat eslint-results.json
+
+      - name: Security audit
+        run: |
+          npm audit --audit-level=high --json > audit-results.json || true
+          echo "Security audit results:"
+          cat audit-results.json
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-quality-results
+          path: |
+            eslint-results.json
+            audit-results.json
+
+  # Unit and Integration Tests
+  test:
+    runs-on: ubuntu-latest
+    needs: code-quality
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
+    name: Test (Node ${{ matrix.node-version }})
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start MCP Router Pro
+        run: |
+          node server-pro.js &
+          sleep 10
+        env:
+          MCP_ADMIN_KEY: ${{ secrets.MCP_ADMIN_KEY || 'test-admin-key' }}
+
+      - name: Run health checks
+        run: |
+          node production-monitor.js --extended
+          
+      - name: Run advanced test suite
+        run: |
+          node test-suite-advanced.js
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-node-${{ matrix.node-version }}
+          path: |
+            test-results-advanced.json
+            health-check-*.json
+
+  # Load Testing
+  load-test:
+    runs-on: ubuntu-latest
+    needs: test
+    name: Load Testing
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start MCP Router Pro
+        run: |
+          node server-pro.js &
+          sleep 15
+        env:
+          MCP_ADMIN_KEY: ${{ secrets.MCP_ADMIN_KEY || 'test-admin-key' }}
+
+      - name: Run load tests
+        run: |
+          node load-test-runner.js
+
+      - name: Upload load test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-results
+          path: load-test-results.json
+
+  # Docker Build and Test
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    name: Docker Build & Test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: |
+          docker build -t mcp-router-pro:test .
+
+      - name: Test Docker container
+        run: |
+          # Start container
+          docker run -d -p 3003:3001 --name mcp-test mcp-router-pro:test
+          sleep 15
+          
+          # Run health checks
+          curl -f http://localhost:3003/health || exit 1
+          curl -f http://localhost:3003/api/tools || exit 1
+          
+          # Test JSON-RPC
+          curl -f -X POST -H "Content-Type: application/json" \
+            -d '{"jsonrpc":"2.0","method":"ping","id":"ci-test"}' \
+            http://localhost:3003/api/mcp/jsonrpc || exit 1
+          
+          # Cleanup
+          docker stop mcp-test
+          docker rm mcp-test
+
+      - name: Login to Container Registry
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push Docker image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          docker tag mcp-router-pro:test ${{ env.DOCKER_REGISTRY }}/${{ github.repository }}/${{ env.IMAGE_NAME }}:latest
+          docker tag mcp-router-pro:test ${{ env.DOCKER_REGISTRY }}/${{ github.repository }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.DOCKER_REGISTRY }}/${{ github.repository }}/${{ env.IMAGE_NAME }}:latest
+          docker push ${{ env.DOCKER_REGISTRY }}/${{ github.repository }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+  # Security Scanning
+  security:
+    runs-on: ubuntu-latest
+    needs: docker
+    name: Security Scan
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'mcp-router-pro:test'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Production Deployment (only on main branch)
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [test, load-test, docker, security]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+    name: Deploy to Production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to production server
+        run: |
+          echo "🚀 Production deployment would happen here"
+          echo "This would typically involve:"
+          echo "  - SSH to production server"
+          echo "  - Pull latest Docker image"
+          echo "  - Rolling update with health checks"
+          echo "  - Smoke tests"
+          echo "  - Rollback on failure"
+          
+          # Example deployment commands:
+          # ssh production-server "docker pull $IMAGE_NAME:$GITHUB_SHA"
+          # ssh production-server "docker-compose up -d --no-deps mcp-router"
+          # curl -f https://production-url/health
+
+      - name: Run post-deployment health check
+        run: |
+          echo "🏥 Post-deployment health check"
+          # node production-monitor.js --target https://production-url --extended
+
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "✅ Deployment successful!"
+          # Send notification to Slack/Teams/etc.
+
+      - name: Notify deployment failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed!"
+          # Send alert notification
+
+  # Scheduled Health Monitoring
+  scheduled-health-check:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    name: Scheduled Health Check
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run health check against production
+        run: |
+          echo "🏥 Running scheduled health check"
+          # node production-monitor.js --target https://production-url --extended
+
+      - name: Create issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Production Health Check Failed',
+              body: `
+                ## Production Health Check Alert
+                
+                **Time:** ${new Date().toISOString()}
+                **Status:** Failed ❌
+                
+                The scheduled health check has detected issues with the production deployment.
+                
+                ### Next Steps
+                1. Review the failed workflow logs
+                2. Check production server status
+                3. Investigate and resolve issues
+                4. Close this issue once resolved
+                
+                **Workflow:** ${context.workflow}
+                **Run:** ${context.runNumber}
+              `,
+              labels: ['bug', 'production', 'health-check']
+            })
+
+# Performance Benchmarking Job
+  benchmark:
+    runs-on: ubuntu-latest
+    needs: test
+    name: Performance Benchmark
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start MCP Router Pro
+        run: |
+          node server-pro.js &
+          sleep 15
+        env:
+          MCP_ADMIN_KEY: ${{ secrets.MCP_ADMIN_KEY || 'test-admin-key' }}
+
+      - name: Run performance benchmark
+        run: |
+          echo "🏃 Running performance benchmarks"
+          # Add more sophisticated benchmarking tools here
+          # Example: artillery, k6, or custom benchmark scripts
+          
+          # Basic throughput test
+          for i in {1..100}; do
+            curl -s http://localhost:3003/health > /dev/null &
+          done
+          wait
+          
+          echo "✅ Benchmark completed"
+
+      - name: Store benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmark-*.json
+
+# Documentation Update Job
+  docs:
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    name: Update Documentation
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate API documentation
+        run: |
+          echo "📚 Generating API documentation"
+          # Add tools like jsdoc, swagger-jsdoc, etc.
+          
+      - name: Update README with latest metrics
+        run: |
+          echo "📝 Updating README with deployment status"
+          # Update README.md with build status, version, etc.
+
+      - name: Commit documentation updates
+        uses: stefanzweifel/git-auto-commit-action@v5
+        if: github.event_name == 'push'
+        with:
+          commit_message: 'docs: auto-update documentation [skip ci]'
+          file_pattern: '*.md docs/*'

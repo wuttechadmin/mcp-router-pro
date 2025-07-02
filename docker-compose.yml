@@ -1,0 +1,280 @@
+version: '3.8'
+
+services:
+  # MCP File System Server
+  mcp-filesystem:
+    image: node:20-alpine
+    container_name: mcp-filesystem
+    working_dir: /app
+    command: sh -c "npm install -g @modelcontextprotocol/server-filesystem && mcp-server-filesystem /workspace"
+    volumes:
+      - ./workspace:/workspace
+      - ./mcp-config:/config
+    environment:
+      - MCP_SERVER_NAME=filesystem
+      - MCP_ALLOWED_PATHS=/workspace
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # MCP Git Server
+  mcp-git:
+    image: python:3.11-alpine
+    container_name: mcp-git
+    working_dir: /app
+    command: sh -c "pip install mcp-server-git && python -m mcp_server_git --repository /workspace"
+    volumes:
+      - ./workspace:/workspace
+      - ./mcp-config:/config
+    environment:
+      - MCP_SERVER_NAME=git
+      - GIT_REPOSITORY_PATH=/workspace
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # MCP Memory Server
+  mcp-memory:
+    image: node:20-alpine
+    container_name: mcp-memory
+    working_dir: /app
+    command: sh -c "npm install -g @modelcontextprotocol/server-memory && mcp-server-memory"
+    volumes:
+      - ./mcp-data/memory:/data
+    environment:
+      - MCP_SERVER_NAME=memory
+      - MEMORY_DATA_PATH=/data
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # MCP SQLite Server
+  mcp-sqlite:
+    image: node:20-alpine
+    container_name: mcp-sqlite
+    working_dir: /app
+    command: sh -c "npm install -g @modelcontextprotocol/server-sqlite && mcp-server-sqlite /data/databases"
+    volumes:
+      - ./mcp-data/sqlite:/data/databases
+    environment:
+      - MCP_SERVER_NAME=sqlite
+      - SQLITE_DB_PATH=/data/databases
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # MCP PostgreSQL Database
+  mcp-postgres:
+    image: postgres:15-alpine
+    container_name: mcp-postgres
+    environment:
+      - POSTGRES_DB=mcp_db
+      - POSTGRES_USER=mcp_user
+      - POSTGRES_PASSWORD=mcp_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./mcp-config/postgres:/docker-entrypoint-initdb.d
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # MCP PostgreSQL Server
+  mcp-postgres-server:
+    image: node:20-alpine
+    container_name: mcp-postgres-server
+    working_dir: /app
+    command: sh -c "npm install -g @modelcontextprotocol/server-postgres && mcp-server-postgres postgresql://mcp_user:mcp_password@mcp-postgres:5432/mcp_db"
+    depends_on:
+      - mcp-postgres
+    environment:
+      - MCP_SERVER_NAME=postgres
+      - DATABASE_URL=postgresql://mcp_user:mcp_password@mcp-postgres:5432/mcp_db
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # MCP Docker Server
+  mcp-docker:
+    image: python:3.11-alpine
+    container_name: mcp-docker
+    working_dir: /app
+    command: sh -c "pip install docker-mcp-server && python -m docker_mcp_server"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - MCP_SERVER_NAME=docker
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # MCP Brave Search Server
+  mcp-brave-search:
+    image: node:20-alpine
+    container_name: mcp-brave-search
+    working_dir: /app
+    command: sh -c "npm install -g @modelcontextprotocol/server-brave-search && mcp-server-brave-search"
+    environment:
+      - MCP_SERVER_NAME=brave-search
+      - BRAVE_API_KEY=${BRAVE_API_KEY}
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # MCP GitHub Server
+  mcp-github:
+    image: node:20-alpine
+    container_name: mcp-github
+    working_dir: /app
+    command: sh -c "npm install -g @modelcontextprotocol/server-github && mcp-server-github"
+    environment:
+      - MCP_SERVER_NAME=github
+      - GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_TOKEN}
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # MCP Slack Server
+  mcp-slack:
+    image: python:3.11-alpine
+    container_name: mcp-slack
+    working_dir: /app
+    command: sh -c "pip install slack-mcp-server && python -m slack_mcp_server"
+    environment:
+      - MCP_SERVER_NAME=slack
+      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
+      - SLACK_USER_TOKEN=${SLACK_USER_TOKEN}
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # MCP Prometheus Server
+  mcp-prometheus:
+    image: python:3.11-alpine
+    container_name: mcp-prometheus
+    working_dir: /app
+    command: sh -c "pip install prometheus-mcp-server && python -m prometheus_mcp_server"
+    environment:
+      - MCP_SERVER_NAME=prometheus
+      - PROMETHEUS_URL=${PROMETHEUS_URL:-http://localhost:9090}
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # MCP Jupyter Server
+  mcp-jupyter:
+    image: python:3.11-alpine
+    container_name: mcp-jupyter
+    working_dir: /app
+    command: sh -c "pip install jupyter-mcp-server && python -m jupyter_mcp_server"
+    volumes:
+      - ./workspace/notebooks:/notebooks
+    environment:
+      - MCP_SERVER_NAME=jupyter
+      - JUPYTER_NOTEBOOK_DIR=/notebooks
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # MCP E2B Code Execution Server
+  mcp-e2b:
+    image: python:3.11-alpine
+    container_name: mcp-e2b
+    working_dir: /app
+    command: sh -c "pip install e2b-mcp-server && python -m e2b_mcp_server"
+    environment:
+      - MCP_SERVER_NAME=e2b
+      - E2B_API_KEY=${E2B_API_KEY}
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # MCP OpenAPI Server
+  mcp-openapi:
+    image: python:3.11-alpine
+    container_name: mcp-openapi
+    working_dir: /app
+    command: sh -c "pip install openapi-mcp-server && python -m openapi_mcp_server"
+    volumes:
+      - ./mcp-config/openapi:/config
+    environment:
+      - MCP_SERVER_NAME=openapi
+      - OPENAPI_CONFIG_PATH=/config/config.yaml
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # MCP Email Server
+  mcp-email:
+    image: python:3.11-alpine
+    container_name: mcp-email
+    working_dir: /app
+    command: sh -c "pip install email-mcp-server && python -m email_mcp_server"
+    environment:
+      - MCP_SERVER_NAME=email
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # MCP Router - Central routing for all MCP servers
+  mcp-router:
+    build: ./mcp-router
+    container_name: mcp-router
+    ports:
+      - "3001:3001"
+    environment:
+      - MCP_ROUTER_PORT=3001
+      - MCP_ROUTER_HOST=0.0.0.0
+    volumes:
+      - ./mcp-config:/config
+    # temporarily removed depends_on for testing
+      - mcp-email
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # Prometheus for monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # Grafana for dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+networks:
+  mcp-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  prometheus_data:
+  grafana_data:

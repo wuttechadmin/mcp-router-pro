@@ -1,0 +1,67 @@
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Git files
+.git/
+.gitignore
+
+# Node modules (but keep package-lock.json)
+node_modules/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Documentation (not needed in container)
+*.md
+docs/
+
+# Test files (not needed in production container)
+test/
+tests/
+*test*.js
+*spec*.js
+
+# CI/CD files
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Infrastructure files (not needed in container)
+infra/
+*.bicep
+azure-deploy.ps1
+
+# Azure files
+.azure/
